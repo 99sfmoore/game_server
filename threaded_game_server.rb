@@ -12,19 +12,65 @@ require_relative 'tic_tac_toe_sockets'
 
 
 class Player
-  attr_reader :conn, :name, :mark
+  attr_reader :name, :mark
 
-  def initialize(conn, name, mark)
+  def initialize(conn, name)
     @conn = conn
     @name = name
-    @mark = mark
+    @mark = 1
+  end
+
+  def is_player2
+    @mark = 2
+  end
+
+  def tell(string)
+    @conn.puts(string)
+  end
+
+  def ask(string) #returns input from client in response to string
+    @conn.puts(string)
+    @conn.puts("GET")
+    @conn.gets.chomp
+  end
+  
+  def get_move(board)
+    begin
+      move = ask("#{@name}, it's your turn.  Make a move.").to_i
+      tell("Not a valid move.") if !board.valid?(move)
+    end until board.valid?(move)
+    move
+  end
+
+end
+
+class ComputerPlayer
+  attr_reader :name, :mark
+
+  def initialize(level)
+    @level = level
+    @name = "HAL"
+    @mark = 2
+  end
+
+  def tell(string)
+    #does nothing
+  end
+
+  def ask(string)
+    #does nothing
+  end
+
+  def get_move(board)
+    board.auto_move(@level,@mark)
   end
 end
+
 
 class Game
   attr_reader :game_board, :name, :active_player, :inactive_player, :inplay
 
-  def initialize(game_type, player1, player2 = nil)
+  def initialize(game_type, player1)
     if game_type == "C"
       @game_board = ConnectFour::Board.new
       @name = "Connect Four"
@@ -32,18 +78,7 @@ class Game
       @game_board = TicTacToe::Board.new
       @name = "Tic Tac Toe"
     end
-    @inplay = !player2.nil?
-    if inplay
-      if rand(2) == 0
-        @active_player = player1
-        @inactive_player = player2
-      else
-        @active_player = player1
-        @inactive_player = player2
-      end
-    else
-      @active_player = player1
-    end
+    @active_player = player1
   end
 
   def add_player(player2)
@@ -71,18 +106,13 @@ class Game
   end
 
   def tell_both(string)
-    @active_player.conn.puts(string)
-    @inactive_player.conn.puts(string)
+    @active_player.tell(string)
+    @inactive_player.tell(string)
   end
 
   def get_move
-    @inactive_player.conn.puts("Waiting for #{@active_player.name} to make a move.")
-    begin 
-      @active_player.conn.puts("#{@active_player.name}, it's your turn.  Make a move.")
-      @active_player.conn.puts("GET")
-      move = @active_player.conn.gets.chomp.to_i
-      @active_player.conn.puts("Not a valid move.") if !valid?(move)
-    end until valid?(move)
+    @inactive_player.tell("Waiting for #{@active_player.name} to make a move.")
+    move = @active_player.get_move(@game_board)
     @game_board.make_move(move,@active_player.mark.to_s)
   end
 
@@ -109,14 +139,12 @@ class Game
     if @game_board.draw?
       tell_both("It's a draw.")
     else
-      @inactive_player.conn.puts("#{inactive_player.name}, you win!")
-      @active_player.conn.puts("Sorry, #{active_player.name}, you lost.") 
+      @inactive_player.tell("#{inactive_player.name}, you win!") if !@human
+      @active_player.tell("Sorry, #{active_player.name}, you lost.") if @human
     end
-    @inplay = false
   end
 end
 
-  
 
 class Server
 
@@ -128,34 +156,27 @@ class Server
     @game_lock = Mutex.new
   end
 
-  def start_new_game(conn, name)
-    new_player = Player.new(conn,name,1)
-
+  def start_new_game(new_player)
     begin
-      conn.puts("Would you like to play Connect Four (C) or TicTacToe (T)? (C/T)")
-      conn.puts("GET")
-      game_choice = conn.gets.chomp.upcase
+      game_choice = new_player.ask("Would you like to play Connect Four (C) or TicTacToe (T)? (C/T)").upcase
     end until game_choice == "C" || game_choice == "T"
 
+    new_game = Game.new(game_choice,new_player)
+
     begin
-      conn.puts("Do you want to play against the computer (C) or wait for someone to join (W)? (C/W)") #computer options don't exist yet
-      conn.puts("GET")
-      player_choice = conn.gets.chomp.capitalize
-      player_choice = "W" #computer player not yet implemented
+      player_choice = new_player.ask("Do you want to play against the computer (C) or wait for someone to join (W)? (C/W)") 
     end until player_choice == "C" || player_choice == "W"
 
     if player_choice == "C"
-      #conn.puts("Do you want an easy(1), medium(2), or hard(3) game?")
-      #conn.puts("GET")
-      #level = conn.gets.chomp.to_i
-      new_game = Game.new(game_choice,new_player) #initialize game with computer player, too
-      @games << new_game
+      begin
+      level = new_player.ask("Do you want an easy(1), medium(2), or hard(3) game?").to_i
+      end until (level >= 1 && level <= 3)
+      new_game.add_player(ComputerPlayer.new(level))
       game_in_play(new_game)  
 
     else #wait for second player
-      new_game = Game.new(game_choice,new_player) #initialize game with computer player, too
-      @games << Game.new(game_choice,new_player)
-      conn.puts("Please wait for a second player to join")
+      @games << new_game
+      new_player.tell("Please wait for a second player to join")
     end
   end
 
@@ -173,26 +194,24 @@ class Server
   end
 
 
-  def select_game(conn, name)
-    conn.puts("Your choices are: ")
+  def select_game(new_player)
+    new_player.tell("Your choices are: ")
     choices = @games.find_all {|g| !g.inplay } 
-    choices.each_with_index do |game, i|
-      conn.puts("#{i+1})  #{game.active_player.name} is waiting to play #{game.name}")
+    @games.each_with_index do |game, i|
+      new_player.tell("#{i+1})  #{game.active_player.name} is waiting to play #{game.name}")
     end
-    conn.puts("#{choices.size+1}) Play your own game.")
-    conn.puts("Choose an option: 1 - #{choices.size+1}")
-    conn.puts("GET")
-    game_choice = conn.gets.to_i
+    new_player.tell("#{choices.size+1}) Play your own game.")
+    game_choice = new_player.ask("Choose an option: 1 - #{choices.size+1}").to_i
     if game_choice > choices.size
-      start_new_game(conn, name)
+      start_new_game(new_player)
     else
       #@game_lock.synchronize do# need to somehow lock the choices, currently 2 people can join the same game -- kicks original player out
         current_game = choices[game_choice-1]
         if current_game.inplay
-          conn.puts "Sorry, that game was just taken."
-          select_game(conn,name)
+          new_player.tell("Sorry, that game was just taken.")
+          select_game(new_player)
         else
-        new_player = Player.new(conn,name,2)
+        new_player.is_player2
         current_game.active_player.conn.puts("#{new_player.name} will be joining you.")
         current_game.add_player(new_player)
         end
@@ -209,10 +228,11 @@ class Server
           conn.puts("What is your name?")
           conn.puts("GET")
           name = conn.gets.chomp.capitalize
+          new_player = Player.new(conn,name)
             if @games == [] || @games.all? {|g| g.inplay} 
-              start_new_game(conn,name)
+              start_new_game(new_player)
             else
-              select_game(conn,name)
+              select_game(new_player)
             end
           end
       end
