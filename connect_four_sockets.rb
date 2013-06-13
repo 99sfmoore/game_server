@@ -1,6 +1,6 @@
 require 'colored'
 
-class ConnectFour #should this be module?
+module ConnectFour 
 
   class Board
     attr_reader :turns
@@ -10,22 +10,61 @@ class ConnectFour #should this be module?
       @turns = 0
     end
 
-    def display
-      display_string= ("+---"*7+"+\n").blue
-      5.downto(0) do |h|
-        @grid.each do |col|
-          display_string << "|".blue
-          if col.size < h + 1
-              display_string<< "   "
-          elsif col[h] == "1"
-              display_string<< " @ ".red
-          else
-              display_string<< " @ ".black
-          end
-        end 
-        display_string<< ("|\n"+"+---"*7+"+\n").blue
+    def row(i)  #returns array of entire ith row
+      @grid.map { |col| col[i]}
+    end
+
+    def rows #returns 2D array of all rows
+      5.downto(0).map {|i| row(i)}
+    end
+
+    def col(i) #returns array of entire ith col
+      @grid[i]
+    end
+
+    def cols #returns 2D array of all cols
+      @grid
+    end
+    
+    #why?  
+    def cell(col_i, row_i) #returns value at a given point in the grid
+      column = col(col_i)
+      column && column[row_i]
+      #@grid[col_i][row_i]  i like this version
+    end
+
+    def diagonals_from(col_i, row_i)
+      diag_left = []
+      diag_right = []
+
+      (0..5).each do |row_offset|
+        col1_i = (col_i +row_i) - row_offset
+        col2_i = (col_i - row_i) + row_offset
+        diag_left << cell(col1_i, row_offset) if col1_i >= 0 && col1_i <= 6
+        diag_right << cell(col2_i, row_offset) if col2_i >= 0 && col2_i <= 6
       end
-      display_string<<"  1   2   3   4   5   6   7\n"
+
+      [diag_left, diag_right]
+    end
+
+    def display_row(row)
+      s = row.map do |cell|
+        if cell.nil?
+          "   "
+        elsif cell == "1"
+          " @ ".red
+        else
+          " @ ".black
+        end
+      end
+      "|".blue + s.join("|".blue) + "|".blue
+    end
+
+    def display
+      row_sep = ("+---"*7+"+").blue
+      rows_string = rows.map {|r| display_row(r) + "\n"}.join(row_sep + "\n")
+      legend = "  1   2   3   4   5   6   7"
+      row_sep + "\n" + rows_string + row_sep + "\n" + legend + "\n"
     end
 
     def make_move(move,mark)
@@ -35,36 +74,34 @@ class ConnectFour #should this be module?
     end
 
     def valid?(move)
-      return false if move < 1 || move > 7 || @grid[move-1].size >=6
-      true
+      !(move < 1 || move > 7 || @grid[move-1].size >=6)
+    end
+
+    def auto_move(level,mark)
+      pick = rand(7)+1 if level == 1
+      pick = 5 if level !=1
+
+      make_move(pick,mark)
     end
 
     def game_over?
       return false if @turns < 7
-      col = @last_move.first
-      color = @last_move.last
-      row = @grid[col].size-1
+      col_i, color = @last_move
+      col_to_check = col(col_i)
 
-      col_string = @grid[col].join
-      return true if col_string.match(color*4)
+      row_i = col_to_check.size - 1
+      row_to_check = row(row_i)
 
-      row_string = @grid.inject(""){|memo,c| memo.concat(c[row] || " ")}
-      return true if row_string.match(color*4)
+      diag_left, diag_right = diagonals_from(col_i, row_i)
 
-      diag1_string = ""
-      diag2_string = ""
-      (0..5).each do |r|
-        col1 = r + (col-row)
-        col2 = r + (col + row)
-        diag1_string.concat(@grid[col1][r] || " ") if col1 >= 0 && col1 <=6
-        diag2_string.concat(@grid[col2][r] || " ") if col2 >= 0 && col2 <=6
+      [col_to_check, row_to_check, diag_left, diag_right].each do |line|
+        return true if nils_to_spaces(line).join.match(color * 4)
       end
-      return true if diag1_string.match(color*4) || diag2_string.match(color*4)
 
       if @turns == 42
-        @turns +=1
-        return true
+        @turns +=1 and true
       end
+
       false
     end
 
@@ -72,16 +109,12 @@ class ConnectFour #should this be module?
       @turns > 42
     end
 
+    private
+
+    def nils_to_spaces(arr)
+      arr.map { |x| x || " " }
+    end
+
   end # class Board
 
-end
-
-
-
-
-
-
-
-
-
-
+end #module ConnectFour
