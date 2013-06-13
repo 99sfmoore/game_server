@@ -6,7 +6,7 @@ module ConnectFour
     attr_reader :turns
 
     def initialize
-      @grid = Array.new(7){Array.new}
+      @grid = Array.new(7){[]}
       @turns = 0
     end
 
@@ -80,8 +80,7 @@ module ConnectFour
     def auto_move(level,mark)
       pick = rand(7)+1 if level == 1
       pick = 5 if level !=1
-
-      make_move(pick,mark)
+      return pick
     end
 
     def game_over?
