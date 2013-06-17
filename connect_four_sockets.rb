@@ -126,7 +126,6 @@ module ConnectFour
       @grid[move-1] << mark
       @last_move = [move-1,mark.to_s]
       @turns +=1
-      puts "turns is #{@turns}"
     end
 
     def valid?(move)

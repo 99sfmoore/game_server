@@ -88,7 +88,6 @@ module TicTacToe
       @grid[row_i][col_i] = sign
       @last_move = [row_i, col_i, sign]
       @turns +=1
-      puts "#{@turns}"
     end
 
     def auto_move(level,mark)

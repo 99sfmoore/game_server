@@ -13,11 +13,13 @@ require_relative 'tic_tac_toe_sockets'
 
 class Player
   attr_reader :name, :mark
+  attr_accessor :is_playing
 
   def initialize(conn, name)
     @conn = conn
     @name = name
     @mark = 1
+    @is_playing = true
   end
 
   def is_player2
@@ -150,8 +152,11 @@ class Game
       p @active_player
       @active_player.tell("Sorry, #{active_player.name}, you lost.")
     end
+    @active_player.is_playing = false
+    @inactive_player.is_playing = false
   end
-
+  
+  #this does not work as planned
   def play_again?
     #seems like these should be concurrent
     begin
@@ -197,21 +202,22 @@ class Server
 
     if player_choice == "C"
       begin
-      level = new_player.ask("Do you want an easy(1), medium(2), or hard(3) game?").to_i
+        level = new_player.ask("Do you want an easy(1), medium(2), or hard(3) game?").to_i
       end until (level >= 1 && level <= 3)
       new_game.add_player(ComputerPlayer.new(level))
       game_in_play(new_game)  
-
     else #wait for second player
       @games << new_game
       new_player.tell("Please wait for a second player to join")
-      #new_game.wait
+      while new_game.inplay == false
+        sleep(10)
+      end
     end
   end
 
   def game_in_play(current_game)
     #@thread_list << Thread.new do 
-      begin
+      #begin
         current_game.tell_both(current_game.starting_state)
         current_game.tell_both(current_game.display)
         begin
@@ -220,19 +226,21 @@ class Server
           current_game.switch_players
         end until current_game.game_over?
         current_game.endgame
+=begin
         if current_game.play_again?
           stop = true
           current_game = Game.new(current_game.name, current_game.active_player, current_game.inactive_player)
         end
       end until stop 
     #end #thread
+=end
   end
 
 
   def select_game(new_player)
     new_player.tell("Your choices are: ")
     choices = @games.find_all {|g| !g.inplay } 
-    @games.each_with_index do |game, i|
+    choices.each_with_index do |game, i|
       new_player.tell("#{i+1})  #{game.active_player.name} is waiting to play #{game.name}")
     end
     new_player.tell("#{choices.size+1}) Play your own game.")
@@ -264,21 +272,26 @@ class Server
           conn.puts("GET")
           name = conn.gets.chomp.capitalize
           new_player = Player.new(conn,name)
-          if @games == [] || @games.all? {|g| g.inplay} 
-            start_new_game(new_player)
-          else
-            select_game(new_player)
-          end
-=begin          
+          begin 
+            if @games == [] || @games.all? {|g| g.inplay} 
+              start_new_game(new_player)
+            else
+              select_game(new_player)
+            end
+            while new_player.is_playing
+              sleep(5)
+            end
+            puts "I'm done with #{name}'s game."
             begin
-              conn.puts("Would you like to keep playing? (Y/N)")
+              conn.puts("Do you want to play another game? (Y/N)")
               conn.puts("GET")
-
-            end until conn.gets.chomp.capitalize == "N"
-            conn.puts("Goodbye.")
-            conn.puts("END")
-            conn.close
-=end
+              response = conn.gets.chomp.upcase
+            end until response == "Y" || response == "N"
+            new_player.is_playing = true
+          end until response == "N"
+          conn.puts("Goodbye")
+          conn.puts("END")
+          conn.close
         end #thread
       end #socket loop
     end #orig thread
