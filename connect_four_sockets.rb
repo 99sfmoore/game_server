@@ -3,12 +3,66 @@ require 'colored'
 module ConnectFour 
 
   class Board
-    attr_reader :turns
+
+    attr_accessor :turns, :grid #for cloning purposes.  Better way to do this?
 
     def initialize
       @grid = Array.new(7){[]}
       @turns = 0
     end
+
+    def clone  #There has to be a better way to do this
+      tempboard = Board.new
+      @grid.each_with_index do |c, i|
+        tempboard.grid[i] = c.dup
+      end
+      tempboard.turns = @turns
+      tempboard
+    end
+
+    def possible_moves(mark)
+      possmoves = Hash.new { [] }
+      (1..7).each do |m|
+        puts "looking at #{m}"
+        tempboard = self.clone
+        tempboard.make_move(m,mark)
+
+        if tempboard.game_over?
+          possmoves[:win] = possmoves[:win] << m
+        else
+          tempboard = self.clone
+          tempboard.make_move(m,opp_mark(mark))
+          if tempboard.game_over?
+            possmoves[:block] = possmoves[:block] << m
+          end
+        end
+      end
+      possmoves
+    end
+
+    def think(mark)
+      (1..7).each do |m|
+        puts "looking at #{m}"
+        tempboard = self.clone
+        tempboard.make_move(m,mark)
+
+        if tempboard.game_over?
+          possmoves[:win] = possmoves[:win] << m
+        else
+          tempboard = self.clone
+          tempboard.make_move(m,opp_mark(mark))
+          if tempboard.game_over?
+            possmoves[:block] = possmoves[:block] << m
+          else
+            tempboard = self.clone
+            tempboard.make_move(m,mark)
+            possmoves = tempboard.think(opp_mark(mark))
+          end
+        end
+      end
+      possmoves
+    end
+
 
     def row(i)  #returns array of entire ith row
       @grid.map { |col| col[i]}
@@ -25,12 +79,13 @@ module ConnectFour
     def cols #returns 2D array of all cols
       @grid
     end
-    
-    #why?  
+     
     def cell(col_i, row_i) #returns value at a given point in the grid
-      column = col(col_i)
-      column && column[row_i]
-      #@grid[col_i][row_i]  i like this version
+      @grid[col_i][row_i] 
+    end
+
+    def opp_mark(mark)
+      mark == 1 ? 2 : 1
     end
 
     def diagonals_from(col_i, row_i)
@@ -51,7 +106,7 @@ module ConnectFour
       s = row.map do |cell|
         if cell.nil?
           "   "
-        elsif cell == "1"
+        elsif cell == 1
           " @ ".red
         else
           " @ ".black
@@ -69,8 +124,9 @@ module ConnectFour
 
     def make_move(move,mark)
       @grid[move-1] << mark
-      @last_move = [move-1,mark]
+      @last_move = [move-1,mark.to_s]
       @turns +=1
+      puts "turns is #{@turns}"
     end
 
     def valid?(move)
@@ -78,13 +134,31 @@ module ConnectFour
     end
 
     def auto_move(level,mark)
-      pick = rand(7)+1 if level == 1
-      pick = 5 if level !=1
-      return pick
+      case level
+      when 1 #computer picks randomly
+        begin
+          pick = rand(7)+1
+        end until valid?(pick)
+
+      when 2 #computer will block or win, but not think ahead
+        possmoves = possible_moves(mark)
+        puts "possmoves is #{possmoves}"
+        begin
+          pick = possmoves[:win].first || possmoves[:block].first || rand(7)+1
+        end until valid?(pick)
+
+      when 3 # computer thinks ahead
+        possmoves = possible_moves(mark)
+        begin
+          pick = possmoves[:win].first || possmoves[:block].first || think(mark)
+        end until valid?(pick)
+      end
+
+      pick
     end
 
     def game_over?
-      return false if @turns < 7
+      
       col_i, color = @last_move
       col_to_check = col(col_i)
 

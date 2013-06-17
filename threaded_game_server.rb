@@ -70,8 +70,8 @@ end
 class Game
   attr_reader :game_board, :name, :active_player, :inactive_player, :inplay
 
-  def initialize(game_type, player1)
-    if game_type == "C"
+  def initialize(game_type, player1, player2 = nil)
+    if game_type == "C" || game_type == "Connect Four"
       @game_board = ConnectFour::Board.new
       @name = "Connect Four"
     else
@@ -79,6 +79,8 @@ class Game
       @name = "Tic Tac Toe"
     end
     @active_player = player1
+    @inplay = false
+    add_player(player2) and @inplay = true if player2
   end
 
   def add_player(player2)
@@ -100,6 +102,11 @@ class Game
     result
   end
 
+  def wait
+    begin
+    end until @inplay
+  end
+
   def starting_state
     "#{@active_player.name} will be #{convert(@active_player.mark)} and #{@inactive_player.name} will be #{convert(@inactive_player.mark)}.\n
      #{@active_player.name} will go first"
@@ -113,7 +120,7 @@ class Game
   def get_move
     @inactive_player.tell("Waiting for #{@active_player.name} to make a move.")
     move = @active_player.get_move(@game_board)
-    @game_board.make_move(move,@active_player.mark.to_s)
+    @game_board.make_move(move,@active_player.mark)
   end
 
   def valid?(move)
@@ -139,10 +146,31 @@ class Game
     if @game_board.draw?
       tell_both("It's a draw.")
     else
-      @inactive_player.tell("#{inactive_player.name}, you win!") if !@human
-      @active_player.tell("Sorry, #{active_player.name}, you lost.") if @human
+      @inactive_player.tell("#{inactive_player.name}, you win!")
+      p @active_player
+      @active_player.tell("Sorry, #{active_player.name}, you lost.")
     end
   end
+
+  def play_again?
+    #seems like these should be concurrent
+    begin
+      response1 = active_player.ask("Do you want to play #{inactive_player.name} again? (Y/N)").upcase
+    end until response1 == "Y" || response1 == "N"
+    begin
+      response2 = inactive_player.ask("Do you want to play #{active_player.name} again? (Y/N)").upcase
+    end until response2 == "Y" || response2 == "N"
+    if response1 == "Y" && response2 == "Y"
+      tell_both("Okay, let's start again")
+      return true
+    elsif response1 == "Y"
+      active_player.tell("Sorry, #{inactive_player.name} doesn't want to play with you")
+    elsif response2 == "Y"
+      inactive_player.tell("Sorry, #{active_player.name} doesn't want to play with you")
+    end
+    false
+  end
+
 end
 
 
@@ -164,7 +192,7 @@ class Server
     new_game = Game.new(game_choice,new_player)
 
     begin
-      player_choice = new_player.ask("Do you want to play against the computer (C) or wait for someone to join (W)? (C/W)") 
+      player_choice = new_player.ask("Do you want to play against the computer (C) or wait for someone to join (W)? (C/W)").upcase
     end until player_choice == "C" || player_choice == "W"
 
     if player_choice == "C"
@@ -177,20 +205,27 @@ class Server
     else #wait for second player
       @games << new_game
       new_player.tell("Please wait for a second player to join")
+      #new_game.wait
     end
   end
 
   def game_in_play(current_game)
-    @thread_list << Thread.new do 
-      current_game.tell_both(current_game.starting_state)
-      current_game.tell_both(current_game.display)
+    #@thread_list << Thread.new do 
       begin
-        current_game.get_move
+        current_game.tell_both(current_game.starting_state)
         current_game.tell_both(current_game.display)
-        current_game.switch_players
-      end until current_game.game_over?
-      current_game.endgame
-    end
+        begin
+          current_game.get_move
+          current_game.tell_both(current_game.display)
+          current_game.switch_players
+        end until current_game.game_over?
+        current_game.endgame
+        if current_game.play_again?
+          stop = true
+          current_game = Game.new(current_game.name, current_game.active_player, current_game.inactive_player)
+        end
+      end until stop 
+    #end #thread
   end
 
 
@@ -212,7 +247,7 @@ class Server
           select_game(new_player)
         else
         new_player.is_player2
-        current_game.active_player.conn.puts("#{new_player.name} will be joining you.")
+        current_game.active_player.tell("#{new_player.name} will be joining you.")
         current_game.add_player(new_player)
         end
       #end # end synchronize / Mutex doesn't work (? because it never gets to end of if/else & unlocks ?)
@@ -229,14 +264,24 @@ class Server
           conn.puts("GET")
           name = conn.gets.chomp.capitalize
           new_player = Player.new(conn,name)
-            if @games == [] || @games.all? {|g| g.inplay} 
-              start_new_game(new_player)
-            else
-              select_game(new_player)
-            end
+          if @games == [] || @games.all? {|g| g.inplay} 
+            start_new_game(new_player)
+          else
+            select_game(new_player)
           end
-      end
-    end
+=begin          
+            begin
+              conn.puts("Would you like to keep playing? (Y/N)")
+              conn.puts("GET")
+
+            end until conn.gets.chomp.capitalize == "N"
+            conn.puts("Goodbye.")
+            conn.puts("END")
+            conn.close
+=end
+        end #thread
+      end #socket loop
+    end #orig thread
     @thread_list.each {|thr| thr.join}
   end #run          
 end #server class

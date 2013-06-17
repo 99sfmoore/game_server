@@ -13,13 +13,14 @@ class Client
       message = @connection.gets.chomp
   
       if message == "GET"
-        move = gets.chomp
-        @connection.puts(move)
+        response = gets.chomp
+        @connection.puts(response)
+      elsif message == "END"
+        break
       else
         puts message
       end
-      end
-      
+    end
   end
 
 
