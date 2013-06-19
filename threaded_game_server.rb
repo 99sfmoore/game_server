@@ -12,7 +12,7 @@ require_relative 'tic_tac_toe_sockets'
 
 
 class Player
-  attr_reader :name, :mark
+  attr_reader :name, :mark, :interrupted
   attr_accessor :is_playing
 
   def initialize(conn, name)
@@ -20,10 +20,19 @@ class Player
     @name = name
     @mark = 1
     @is_playing = true
+    @interrupted = false
   end
 
   def is_player2
     @mark = 2
+  end
+
+  def interrupt
+    @interrupted = true
+  end
+
+  def reset
+    @interrupted = false
   end
 
   def tell(string)
@@ -47,13 +56,18 @@ class Player
 end
 
 class ComputerPlayer
-  attr_reader :name, :mark
+  attr_reader :name, :mark, :interrupted
+  attr_accessor :is_playing
 
   def initialize(level)
     @level = level
     @name = "HAL"
     @mark = 2
+    @interrupted = false
   end
+
+  #these methods are here to allow for the same game loop for a 1 or 2 player game.
+  #is there a better way to do this?
 
   def tell(string)
     #does nothing
@@ -155,26 +169,6 @@ class Game
     @active_player.is_playing = false
     @inactive_player.is_playing = false
   end
-  
-  #this does not work as planned
-  def play_again?
-    #seems like these should be concurrent
-    begin
-      response1 = active_player.ask("Do you want to play #{inactive_player.name} again? (Y/N)").upcase
-    end until response1 == "Y" || response1 == "N"
-    begin
-      response2 = inactive_player.ask("Do you want to play #{active_player.name} again? (Y/N)").upcase
-    end until response2 == "Y" || response2 == "N"
-    if response1 == "Y" && response2 == "Y"
-      tell_both("Okay, let's start again")
-      return true
-    elsif response1 == "Y"
-      active_player.tell("Sorry, #{inactive_player.name} doesn't want to play with you")
-    elsif response2 == "Y"
-      inactive_player.tell("Sorry, #{active_player.name} doesn't want to play with you")
-    end
-    false
-  end
 
 end
 
@@ -209,6 +203,17 @@ class Server
     else #wait for second player
       @games << new_game
       new_player.tell("Please wait for a second player to join")
+      begin
+        response = new_player.ask("Do you want to play #{new_game.name} against the computer while you're waiting? (Y/N)").upcase
+      end until response == "Y" || response == "N"
+      if response == "Y"
+        wait_game = Game.new(game_choice, new_player)
+        begin
+          level = new_player.ask("Do you want an easy(1), medium(2), or hard(3) game?").to_i
+        end until (level >= 1 && level <= 3)
+        wait_game.add_player(ComputerPlayer.new(level))
+        game_in_play(wait_game)  
+      end
       while new_game.inplay == false
         sleep(10)
       end
@@ -216,24 +221,22 @@ class Server
   end
 
   def game_in_play(current_game)
-    #@thread_list << Thread.new do 
-      #begin
-        current_game.tell_both(current_game.starting_state)
-        current_game.tell_both(current_game.display)
-        begin
-          current_game.get_move
-          current_game.tell_both(current_game.display)
-          current_game.switch_players
-        end until current_game.game_over?
-        current_game.endgame
-=begin
-        if current_game.play_again?
-          stop = true
-          current_game = Game.new(current_game.name, current_game.active_player, current_game.inactive_player)
-        end
-      end until stop 
-    #end #thread
-=end
+    current_game.tell_both(current_game.starting_state)
+    current_game.tell_both(current_game.display)
+    begin
+      current_game.get_move
+      current_game.tell_both(current_game.display)
+      current_game.switch_players
+    end until current_game.game_over? || current_game.active_player.interrupted || current_game.inactive_player.interrupted
+    if current_game.active_player.interrupted
+      current_game.active_player.tell("This game is cancelled.")
+      current_game.active_player.reset
+    elsif current_game.inactive_player.interrupted
+      current_game.inactive_player.tell("This game is cancelled.")
+      current_game.inactive_player.reset
+    else
+      current_game.endgame
+    end
   end
 
 
@@ -254,7 +257,12 @@ class Server
           new_player.tell("Sorry, that game was just taken.")
           select_game(new_player)
         else
+        new_player.tell("Waiting to connect....")
         new_player.is_player2
+        current_game.active_player.interrupt
+        while current_game.active_player.interrupted 
+          #do nothing until "wait_game" is finished
+        end  
         current_game.active_player.tell("#{new_player.name} will be joining you.")
         current_game.add_player(new_player)
         end
@@ -279,9 +287,8 @@ class Server
               select_game(new_player)
             end
             while new_player.is_playing
-              sleep(5)
+              sleep(5) #what's the right time for this?  Better way to do?
             end
-            puts "I'm done with #{name}'s game."
             begin
               conn.puts("Do you want to play another game? (Y/N)")
               conn.puts("GET")

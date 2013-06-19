@@ -1,15 +1,22 @@
 require 'colored'
+require 'json'
 
 module TicTacToe
 
   class Board
-    attr_reader :turns
+    attr_reader :turn 
 
-    def initialize()
-      @grid = [[1,2,3],[4,5,6],[7,8,9]]
-      @turns = 0
-      @last_move = [0,0,"X"] # for debugging
+    def initialize(grid = nil, turns = nil)
+      @grid = grid || [[1,2,3],[4,5,6],[7,8,9]]
+      @turns = turns || 0
     end
+
+    def clone
+      new_grid = rows.map {|r| r.dup}
+      nb = Board.new(new_grid, @turns)
+      nb
+    end
+
     
     private
 
@@ -39,7 +46,7 @@ module TicTacToe
       end
       "|"+s.join("|")+"|"
     end
-
+          
     def convert_to_row(move)
       row = (move/3.0).ceil - 1
       row == 2 ? -1 : row
@@ -65,8 +72,32 @@ module TicTacToe
        mark == 1 ? "X" : "O"
     end
 
+    def opp_mark(mark)
+      mark == 1 ? mark = 2 : mark = 1
+    end
+
 
     public
+
+    def write_tictax #needs to create actual tictax hash, not just board
+      board = @grid.flatten.map do |i|
+        if i.is_a?(Integer)
+          0
+        elsif i == "X"
+          1
+        else
+          -1
+        end
+      end
+      board.to_json
+    end
+
+    def read_tictax(json_obj) # to be finished
+      my_hash = JSON.parse(json_obj)
+      board = my_hash[:board]
+    end
+
+
 
     def display 
       row_sep = "+---"*3+"+\n"
@@ -91,24 +122,23 @@ module TicTacToe
     end
 
     def auto_move(level,mark)
+      puts "in auto_move"
       sign = convert_mark(mark)
-      opp_sign = @last_move.last
+      opp_sign = convert_mark(opp_mark(mark))
       case level
       when 1  #computer picks randomly
-        puts "im in 1"
         begin
           pick = rand(9)+1
         end until valid?(pick)
       
       when 2 #computer will block or win, but not think ahead 
-        puts "i'm in 2"
         possmoves = Hash.new { [] }
         (1..9).each do |i|
-          puts "looking at #{i}"
           r = convert_to_row(i)
           c = convert_to_col(i)
           current_cell = cell(r,c)
           if current_cell.is_a?(Integer)
+            puts "looking at #{current_cell}"
             diag1, diag2 = diagonals_from(r,c)
 
             possmoves[:win] = possmoves[:win] << current_cell if row(r).count(sign) == 2
@@ -125,18 +155,71 @@ module TicTacToe
         p possmoves
 
         begin
-          puts "I'm in rand loop"
-          pick = possmoves[:win].first || possmoves[:block].first || 5 || rand(9)+1
-          puts "pick is #{pick}"
+          pick = possmoves[:win].first || possmoves[:block].first || rand(9)+1
         end until valid?(pick)
 
-      when 3 #implement min max
+      when 3 #minimax
+        puts "in level 3"
+        possboards = []
+        (1..9).each do |i|
+          r = convert_to_row(i)
+          c = convert_to_col(i)
+          current_cell = cell(r,c)
+          if current_cell.is_a?(Integer)
+            puts "looking at #{i} toplevel"
+            tempboard = self.clone
+            tempboard.make_move(i,mark)
+            possboards[i] = tempboard.get_score(true,mark)  
+          end
+        end
+        puts "possboard scores (top level) are #{possboards}"
+        pick = possboards.index(1) || possboards.index(0) || possboards.index(-1) 
+      end
+      puts "pick is #{pick}"
+      return pick
+    end
+
+    def get_score(my_turn,mark)
+      p @grid
+      if game_over?
+        if draw?
+          puts "draw"
+          score = 0
+        elsif my_turn
+          puts "win for HAL"
+          score = 1
+         else
+           puts "win for other player"
+           score = -1
+         end
 
       else
-          puts "i'm in else and level is #{level}"
+        nextboards = []
+        (1..9).each do |i|
+          r = convert_to_row(i)
+          c = convert_to_col(i)
+          current_cell = cell(r,c)
+          if current_cell.is_a?(Integer)
+            puts "looking at #{i} inner level - latest"
+            tempboard = self.clone
+            puts "making a move for #{opp_mark(mark)} at #{i}"
+            tempboard.make_move(i,opp_mark(mark))
+            nextboards << tempboard
+          end
+        end
+        puts "now I'm mapping"
+        #continue = gets.chomp
+        puts "nextboards are #{nextboards}"
+        nextboards.map!{|board| board.get_score(!my_turn, opp_mark(mark))}
+        puts "myturn is #{my_turn}"
+        puts "nextboard scores are #{nextboards}"
+        if my_turn
+          score = nextboards.min
+        else
+          score = nextboards.max
+        end
       end
-      puts "#{pick}"
-      return pick
+      score
     end
 
     def game_over?
@@ -165,5 +248,5 @@ module TicTacToe
     end
   end #class Board
 
-end
+end #module TicTacToe
 

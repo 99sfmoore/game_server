@@ -15,8 +15,9 @@ else
 	puts "Player 2 name"
     player2 = [gets.chomp.capitalize, 2, 0]
 end
-current_player = player1
+current_player = player2
 puts board.display
+
 begin
 	puts current_player[0] + " moves"
 	if current_player.last == 1
@@ -26,6 +27,7 @@ begin
 	end
 	board.make_move(move,current_player[1])
 	puts board.display
+	board.write_tictax
 	current_player == player1 ? current_player = player2 : current_player = player1
 end until board.game_over?
 if board.draw?

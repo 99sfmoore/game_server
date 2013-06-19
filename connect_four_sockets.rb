@@ -23,7 +23,6 @@ module ConnectFour
     def possible_moves(mark)
       possmoves = Hash.new { [] }
       (1..7).each do |m|
-        puts "looking at #{m}"
         tempboard = self.clone
         tempboard.make_move(m,mark)
 
@@ -141,15 +140,14 @@ module ConnectFour
 
       when 2 #computer will block or win, but not think ahead
         possmoves = possible_moves(mark)
-        puts "possmoves is #{possmoves}"
         begin
           pick = possmoves[:win].first || possmoves[:block].first || rand(7)+1
         end until valid?(pick)
 
-      when 3 # computer thinks ahead
+      when 3 # computer thinks ahead -- this is not done
         possmoves = possible_moves(mark)
         begin
-          pick = possmoves[:win].first || possmoves[:block].first || think(mark)
+          pick = possmoves[:win].first || possmoves[:block].first || rand(7)+1 #implement thinking ahead
         end until valid?(pick)
       end
 
