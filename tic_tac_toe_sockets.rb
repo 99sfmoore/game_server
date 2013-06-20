@@ -76,6 +76,22 @@ module TicTacToe
       mark == 1 ? mark = 2 : mark = 1
     end
 
+    def num_to_grid(num)
+      r = convert_to_row(num)
+      c = convert_to_col(num)
+      result_cell = cell(r,c)
+      result_cell
+    end
+
+    def valid_moves
+      moves = []
+      (1..9).each do |i|
+        current_cell = num_to_grid(i)
+        moves << i if current_cell.is_a?(Integer)
+      end
+      moves
+    end
+
 
     public
 
@@ -89,12 +105,20 @@ module TicTacToe
           -1
         end
       end
-      board.to_json
+      board_hash = {"board" => board}
     end
 
-    def read_tictax(json_obj) # to be finished
-      my_hash = JSON.parse(json_obj)
-      board = my_hash[:board]
+    def read_tictax(board) # to be finished
+      board.each_with_index do |cell, i| 
+        if cell == 1 
+          @grid[convert_to_row(i+1)][convert_to_col(i+1)] = "X"
+          #num_to_grid(i+1) = "X"
+        elsif cell == -1
+          #num_to_grid(i+1) = "O"
+          @grid[convert_to_row(i+1)][convert_to_col(i+1)] = "O"
+        end
+      end
+      @turns +=1 unless board.all?{|x| x == 0}
     end
 
 
@@ -122,9 +146,10 @@ module TicTacToe
     end
 
     def auto_move(level,mark)
-      puts "in auto_move"
+      puts "making my move"
       sign = convert_mark(mark)
       opp_sign = convert_mark(opp_mark(mark))
+
       case level
       when 1  #computer picks randomly
         begin
@@ -138,7 +163,6 @@ module TicTacToe
           c = convert_to_col(i)
           current_cell = cell(r,c)
           if current_cell.is_a?(Integer)
-            puts "looking at #{current_cell}"
             diag1, diag2 = diagonals_from(r,c)
 
             possmoves[:win] = possmoves[:win] << current_cell if row(r).count(sign) == 2
@@ -159,60 +183,36 @@ module TicTacToe
         end until valid?(pick)
 
       when 3 #minimax
-        puts "in level 3"
         possboards = []
-        (1..9).each do |i|
-          r = convert_to_row(i)
-          c = convert_to_col(i)
-          current_cell = cell(r,c)
-          if current_cell.is_a?(Integer)
-            puts "looking at #{i} toplevel"
-            tempboard = self.clone
-            tempboard.make_move(i,mark)
-            possboards[i] = tempboard.get_score(true,mark)  
-          end
+        valid_moves.each do |i|
+          tempboard = self.clone
+          tempboard.make_move(i,mark)
+          possboards[i] = tempboard.get_score(true,mark)  
         end
-        puts "possboard scores (top level) are #{possboards}"
         pick = possboards.index(1) || possboards.index(0) || possboards.index(-1) 
       end
-      puts "pick is #{pick}"
       return pick
     end
 
     def get_score(my_turn,mark)
-      p @grid
       if game_over?
         if draw?
-          puts "draw"
           score = 0
         elsif my_turn
-          puts "win for HAL"
           score = 1
          else
-           puts "win for other player"
            score = -1
          end
 
       else
         nextboards = []
-        (1..9).each do |i|
-          r = convert_to_row(i)
-          c = convert_to_col(i)
-          current_cell = cell(r,c)
-          if current_cell.is_a?(Integer)
-            puts "looking at #{i} inner level - latest"
-            tempboard = self.clone
-            puts "making a move for #{opp_mark(mark)} at #{i}"
-            tempboard.make_move(i,opp_mark(mark))
-            nextboards << tempboard
-          end
+        valid_moves.each do |i|
+          tempboard = self.clone
+          tempboard.make_move(i,opp_mark(mark))
+          nextboards << tempboard
         end
-        puts "now I'm mapping"
-        #continue = gets.chomp
-        puts "nextboards are #{nextboards}"
         nextboards.map!{|board| board.get_score(!my_turn, opp_mark(mark))}
-        puts "myturn is #{my_turn}"
-        puts "nextboard scores are #{nextboards}"
+        puts "nextboards scores are #{nextboards}"
         if my_turn
           score = nextboards.min
         else
