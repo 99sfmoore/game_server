@@ -1,4 +1,3 @@
-require 'socket'
 require 'httparty'
 require_relative 'tic_tac_toe_sockets'
 
@@ -6,7 +5,10 @@ game = TicTacToe::Board.new
 puts game.display
 
 
-init_hash = JSON.parse(HTTParty.get("http://localhost:5000/play_request"))
+#init_hash = JSON.parse(HTTParty.get("http://localhost:4567/play_request"))
+response = HTTParty.get("http://localhost:4567/play_request")
+p response
+p response.class
 p init_hash
 if init_hash["board"] 
   player_id = init_hash["player1"]
