@@ -16,11 +16,11 @@ module TicTacToe
       nb = Board.new(new_grid, @turns)
       nb
     end
-
+ 
     
     private
 
-    def row(i) #returns array of entire ith row
+    def row(i) #returns array of entire ith row 
       @grid[i]
     end
 
@@ -212,7 +212,7 @@ module TicTacToe
           nextboards << tempboard
         end
         nextboards.map!{|board| board.get_score(!my_turn, opp_mark(mark))}
-        puts "nextboards scores are #{nextboards}"
+        #puts "nextboards scores are #{nextboards}"
         if my_turn
           score = nextboards.min
         else
