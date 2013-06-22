@@ -65,7 +65,6 @@ class GameState
   def check_game_over
     @winner = 0 if !@board.any?{|x| x == 0}
     check_winner
-    puts "in game over and winner is #{@winner}"
   end
 
 end
