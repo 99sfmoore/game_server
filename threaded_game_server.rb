@@ -1,13 +1,10 @@
 require 'socket'
 require 'thread'
 require_relative 'connect_four_sockets'
-require_relative 'tic_tac_toe_sockets'
+require_relative 'faster_tic_tac_toe_sockets'
 
 # Server to allow multiple games of Connect Four and TicTacToe
-# Currently 2 player only.  Play against computer to be implemented
-# run 'connect_four_client.rb' to connect
-# need to deal with end of game - play again or disconnect
-
+# run 'game_client.rb' to connect
 
 
 
@@ -24,7 +21,7 @@ class Player
   end
 
   def is_player2
-    @mark = 2
+    @mark = -1
   end
 
   def interrupt
@@ -62,7 +59,7 @@ class ComputerPlayer
   def initialize(level)
     @level = level
     @name = "HAL"
-    @mark = 2
+    @mark = -1
     @interrupted = false
   end
 
@@ -167,7 +164,9 @@ class Game
       @active_player.tell("Sorry, #{active_player.name}, you lost.")
     end
     @active_player.is_playing = false
+    @active_player.reset
     @inactive_player.is_playing = false
+    @active_player.reset
   end
 
 end
@@ -244,7 +243,7 @@ class Server
     new_player.tell("Your choices are: ")
     choices = @games.find_all {|g| !g.inplay } 
     choices.each_with_index do |game, i|
-      new_player.tell("#{i+1})  #{game.active_player.name} is waiting to play #{game.name}")
+      new_player.tell("#{i+1}) #{game.active_player.name} is waiting to play #{game.name}")
     end
     new_player.tell("#{choices.size+1}) Play your own game.")
     game_choice = new_player.ask("Choose an option: 1 - #{choices.size+1}").to_i
