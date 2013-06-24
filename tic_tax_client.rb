@@ -1,14 +1,15 @@
 require 'httparty'
-require_relative 'tic_tac_toe_sockets'
+require_relative 'faster_tic_tac_toe_sockets'
 
 game = TicTacToe::Board.new
+host = "thomasballinger.com"
+port = 8001
+
 puts game.display
 
 
 #init_hash = JSON.parse(HTTParty.get("http://localhost:4567/play_request"))
-response = HTTParty.get("http://localhost:4567/play_request")
-p response
-p response.class
+init_hash = JSON.parse(HTTParty.get("http://#{host}:#{port}/play_request").parsed_response)
 p init_hash
 if init_hash["board"] 
   player_id = init_hash["player1"]
@@ -17,17 +18,17 @@ if init_hash["board"]
   game.make_move(game.auto_move(3,mark),mark)
   puts game.display
   options = {:body => {:data => game.write_tictax.to_json}}
-  HTTParty.post("http://localhost:5000/submit_board/#{player_id}",options)
+  HTTParty.post("http://#{host}:#{port}/submit_board/#{player_id}",options)
   
 else
   player_id = init_hash["player2"]
-  mark = 2
+  mark = -1
 end
 
 5.times do #currently no endgame on server
   begin 
     puts "requesting"
-    response = JSON.parse(HTTParty.get("http://localhost:5000/get_board/#{player_id}"))
+    response = JSON.parse(HTTParty.get("http://#{host}:#{port}/get_board/#{player_id}").parsed_response)
     p response
     sleep 5
   end until response["status"] != "hold tight"
@@ -37,5 +38,5 @@ end
   game.make_move(game.auto_move(3,mark),mark)
   puts game.display
   options = {:body => {:data => game.write_tictax.to_json}}
-  HTTParty.post("http://localhost:5000/submit_board/#{player_id}",options)
+  HTTParty.post("http://#{host}:#{port}/submit_board/#{player_id}",options)
 end

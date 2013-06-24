@@ -6,68 +6,12 @@ module TicTacToe
   class Board
     attr_reader :turn 
 
-    def initialize(grid = nil, turns = nil) #might not need params
-      @grid = grid || Array.new(9){0}
-      @turns = turns || 0 #might not need this
-    end
-
-    def clone #might not need this
-      new_grid = rows.map {|r| r.dup}
-      nb = Board.new(new_grid, @turns)
-      nb
-    end
+    def initialize
+      @grid = Array.new(9){0}
+      @turns = 0 
+    end 
  
-    
     private
-=begin
-    def row(i) #returns array of entire ith row 
-      @grid[i]
-    end
-
-    def rows #returns 2D array of all rows
-      @grid
-    end
-
-    def col(i) #returns array of entire ith column
-      @grid.map {|r| r[i]}
-    end
-
-    def cols #returns 2D array of all cols
-      (0...@grid.size).map {|i| col(i)}
-    end
-
-    def cell(row_i,col_i)
-      @grid[row_i][col_i]
-    end
-
-    def display_row(row)
-      s = row.map do |x| 
-        x.is_a?(Integer) ? " #{x} " : " #{x} ".red
-      end
-      "|"+s.join("|")+"|"
-    end
-          
-    def convert_to_row(move)
-      row = (move/3.0).ceil - 1
-      row == 2 ? -1 : row
-    end
-
-    def convert_to_col(move)
-      (move % 3) - 1
-    end
-
-    def diagonals_from(row_i, col_i)
-      if row_i == col_i
-        diag_left = [cell(row_i, col_i), cell(row_i-1, col_i-1), cell(row_i-2, col_i-2)]
-      end
-      
-      if (row_i + col_i == -1) || (row_i + col_i == 2)
-        diag_right = [cell(row_i, col_i), cell(row_i-1, col_i+1), cell(row_i-2, col_i-1)]
-      end
-
-      [diag_left || [], diag_right || [] ]
-    end
-=end
 
     def convert_mark(mark)
        mark == 1 ? "X" : "O"
@@ -83,15 +27,15 @@ module TicTacToe
 
     public
 
-    def write_tictax #needs to create actual tictax hash, not just board
+    def write_tictax 
       board_hash = {"board" => @grid}
     end
 
-    def read_tictax(board) # to be finished
+    def read_tictax(board) 
       @grid = board
     end
 
-    def display #needs to be redone
+    def display 
       row_sep = "+---"*3+"+\n"
       rows = []
       @grid.each_with_index do |cell, index|
@@ -161,7 +105,7 @@ module TicTacToe
             tempboard[i-1] = mark
             possboards[i] = get_score(tempboard,true,mark) 
           end
-          pick = possboards.index(mark) || possboards.index(0) || possboards.index(opp_mark(mark)) 
+          pick = possboards.index(mark) || possboards.index(0) || possboards.index(-mark) 
         end
       end
         return pick
@@ -192,7 +136,6 @@ module TicTacToe
         end
         nextboards.map!{|bd| get_score(bd,!my_turn, -mark)}
         mark == 1 ? score = nextboards.min : score = nextboards.max
-        end
       end
       score
     end
@@ -216,29 +159,6 @@ module TicTacToe
         false
       end
     end
-        
-
-=begin
-
-      row_i, col_i, mark = @last_move
-    
-      row_to_check = row(row_i)
-
-      col_to_check = col(col_i)
-
-      diag_left, diag_right = diagonals_from(row_i, col_i)
-
-      [row_to_check, diag_left, diag_right, col_to_check].each do |line|
-        return true if line.join.match(mark * 3)
-      end
-
-      if @turns == 9
-        @turns +=1 and return true
-      end
-
-      false
-    end
-=end
 
     def draw?
       @turns > 9

@@ -184,13 +184,16 @@ module TicTacToe
 
       when 3 #minimax
         possboards = []
+        puts "valid moves are: #{valid_moves}"
         valid_moves.each do |i|
           tempboard = self.clone
           tempboard.make_move(i,mark)
-          possboards[i] = tempboard.get_score(true,mark)  
+          possboards[i] = tempboard.get_score(true,mark)
+          puts "possboards scores are: #{possboards}"  
         end
         pick = possboards.index(1) || possboards.index(0) || possboards.index(-1) 
       end
+      puts "pick is #{pick}"
       return pick
     end
 
@@ -212,7 +215,7 @@ module TicTacToe
           nextboards << tempboard
         end
         nextboards.map!{|board| board.get_score(!my_turn, opp_mark(mark))}
-        #puts "nextboards scores are #{nextboards}"
+        puts "nextboards scores are #{nextboards}"
         if my_turn
           score = nextboards.min
         else
