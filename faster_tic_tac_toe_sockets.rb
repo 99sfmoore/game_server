@@ -73,22 +73,10 @@ module TicTacToe
        mark == 1 ? "X" : "O"
     end
 
-    def opp_mark(mark)
-      mark == 1 ? mark = -1 : mark = 1
-    end
-=begin
-    def num_to_grid(num)
-      r = convert_to_row(num)
-      c = convert_to_col(num)
-      result_cell = cell(r,c)
-      result_cell
-    end
-=end
-
     def valid_moves
       moves = []
-      (0..8).each do |i| 
-        moves << i if @grid[i] == 0
+      (1..9).each do |i|  
+        moves << i if @grid[i-1] == 0
       end
       moves
     end
@@ -128,58 +116,56 @@ module TicTacToe
     end
 
     def make_move(move,mark)
-      @grid[move] = mark
-      #@last_move = [row_i, col_i, sign] #not sure if I need this
+      @grid[move-1] = mark
+      @turns +=1
     end
 
     def auto_move(level,mark)
-      puts "making my move"
       sign = convert_mark(mark)
-      opp_sign = convert_mark(opp_mark(mark))
+      opp_sign = convert_mark(-mark)
 
       case level
       when 1  #computer picks randomly
         begin
           pick = rand(9)+1
         end until valid?(pick)
-      # this needs to be redone
+      
       when 2 #computer will block or win, but not think ahead 
-        possmoves = Hash.new { [] }
-        (1..9).each do |i|
-          r = convert_to_row(i)
-          c = convert_to_col(i)
-          current_cell = cell(r,c)
-          if current_cell.is_a?(Integer)
-            diag1, diag2 = diagonals_from(r,c)
-
-            possmoves[:win] = possmoves[:win] << current_cell if row(r).count(sign) == 2
-            possmoves[:win] = possmoves[:win] << current_cell if col(c).count(sign) == 2
-            possmoves[:win] = possmoves[:win] << current_cell if diag1.count(sign) == 2
-            possmoves[:win] = possmoves[:win] << current_cell if diag2.count(sign) == 2
-
-            possmoves[:block] = possmoves[:block] << current_cell if row(r).count(opp_sign) == 2
-            possmoves[:block] = possmoves[:block] << current_cell if col(c).count(opp_sign) == 2
-            possmoves[:block] = possmoves[:block] << current_cell if diag1.count(opp_sign) == 2
-            possmoves[:block] = possmoves[:block] << current_cell if diag2.count(opp_sign) == 2
+        valid_moves.each do |i|
+          tempboard = @grid.dup
+          tempboard[i-1] = mark
+          if game_over?(tempboard)
+            pick = i
+            return pick
           end
         end
-        p possmoves
-
+        valid_moves.each do |i|
+          tempboard = @grid.dup
+          tempboard[i-1] = -mark
+          if game_over?(tempboard)
+            pick = i
+            return pick
+          end
+        end
         begin
-          pick = possmoves[:win].first || possmoves[:block].first || rand(9)+1
+          pick = rand(9)+1
         end until valid?(pick)
 
       when 3 #minimax
-        possboards = []
-        valid_moves.each do |i|
-          tempboard = @grid.dup
-          tempboard[i] = mark
-          possboards[i] = get_score(tempboard,true,mark)  
+        if valid?(5)
+          pick = 5
+        else
+          possboards = []
+          valid_moves.each do |i|
+            tempboard = @grid.dup
+            tempboard[i-1] = mark
+            possboards[i] = get_score(tempboard,true,mark) 
+          end
+          pick = possboards.index(mark) || possboards.index(0) || possboards.index(opp_mark(mark)) 
         end
-        pick = possboards.index(mark) || possboards.index(0) || possboards.index(opp_mark(mark)) 
       end
-      return pick
-    end
+        return pick
+      end
 
     def get_score(board,my_turn,mark)
       winstates = []
@@ -190,9 +176,9 @@ module TicTacToe
         winstates << (board[i] + board[i+3] + board[i+6]).abs
       end
       winstates << (board[0] + board[4] + board[8]).abs
-      winstates << (board[3] + board[4] + board[6]).abs
+      winstates << (board[2] + board[4] + board[6]).abs
       if winstates.any?{|state| state == 3}
-        my_turn ? score = 1 : score = -1
+        score = mark
       elsif !board.any?{|x| x == 0}
         score = 0
       else
@@ -200,24 +186,39 @@ module TicTacToe
         board.each_with_index do |x,i|
           if x == 0
             newboard = board.dup
-            newboard[i] = opp_mark(mark)
+            newboard[i] = -mark
             nextboards << newboard
           end
         end
-        nextboards.map!{|bd| get_score(bd,!my_turn, opp_mark(mark))}
-        #puts "nextboards scores are #{nextboards}"
-        if (my_turn && mark == 1) || (!my_turn && mark == -1)
-          score = nextboards.min
-        else
-          score = nextboards.max
+        nextboards.map!{|bd| get_score(bd,!my_turn, -mark)}
+        mark == 1 ? score = nextboards.min : score = nextboards.max
         end
       end
       score
     end
 
-    
+    def game_over?(board = @grid)
+      winstates = []
+      [0,3,6].each do |i|
+        winstates << board[i..i+2].inject(:+).abs
+      end
+      (0..2).each do |i|
+        winstates << (board[i] + board[i+3] + board[i+6]).abs
+      end
+      winstates << (board[0] + board[4] + board[8]).abs
+      winstates << (board[2] + board[4] + board[6]).abs
+      if winstates.any?{|state| state == 3}
+        return true
+      elsif @turns == 9
+        @turns +=1
+        return true
+      else
+        false
+      end
+    end
+        
 
-    def game_over?
+=begin
 
       row_i, col_i, mark = @last_move
     
@@ -237,6 +238,7 @@ module TicTacToe
 
       false
     end
+=end
 
     def draw?
       @turns > 9
