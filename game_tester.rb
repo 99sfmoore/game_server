@@ -5,15 +5,15 @@ puts "Choose game (C/T)"
 choice = gets.chomp.upcase
 choice == "C" ? board = ConnectFour::Board.new : board = TicTacToe::Board.new
 puts "Player 1 name"
-player1 = [gets.chomp.capitalize, 1, 0]
+player1 = [gets.chomp.capitalize, -1, 0]
 puts "Computer or human? (C/H)"
-if gets.chomp == "C"
+if gets.chomp.upcase == "C"
 	puts "What level?"
 	level = gets.chomp.to_i
-	player2 = ["HAL",2, 1]
+	player2 = ["HAL",1, 1]
 else
 	puts "Player 2 name"
-    player2 = [gets.chomp.capitalize, 2, 0]
+    player2 = [gets.chomp.capitalize, 1, 0]
 end
 current_player = player2
 puts board.display
