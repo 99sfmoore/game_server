@@ -132,8 +132,18 @@ module ConnectFour
 
     def make_move(move,mark)
       @grid[move-1] << mark
-      @last_move = [move-1,mark.to_s]
+      @last_move = [move-1,convert(mark)]
       @turns +=1
+    end
+
+    def convert(mark)
+      if mark == 1
+        return "R"
+      elsif mark == -1
+        return "B"
+      else
+        " "
+      end
     end
 
     def valid?(move)
@@ -158,15 +168,42 @@ module ConnectFour
         valid_moves.each do |i|
           tempboard = self.clone
           tempboard.make_move(i,mark)
-          possboards[i] = getscore(tempboard,true,mark,4)
+          possboards[i] = get_score(tempboard,true,mark,0,4)
+          puts "score from move #{i} is #{possboards[i]}"
         end
+        puts "scores are #{possboards}"
         pick = possboards.index(mark*100) || possboards.index(0) || possboards.index(-mark*100)
       end
       pick
     end
 
+    def get_score(board,my_turn,mark,my_level,max_level)
+      if board.game_over?
+        if board.draw?
+          score = 0
+        else
+          score = mark*100
+        end
+      elsif my_level == max_level
+        score = 0
+      else
+        nextboards = []
+        valid_moves.each do |move|
+          newboard = board.clone
+          newboard.make_move(move,-mark)
+          #puts "level is #{my_level}, move is #{move}"
+          #puts newboard.display
+          nextboards << newboard
+        end
+        nextboards.map!{|bd| get_score(bd, !my_turn, -mark, my_level+1, max_level)}
+        #puts "nextboard scores are #{nextboards}"
+        #puts "mark is #{mark} (min if 1, max if -1)"
+        mark == 1 ? score = nextboards.min : score = nextboards.max
+      end
+      score
+    end
+
     def game_over?
-      
       col_i, color = @last_move
       col_to_check = col(col_i)
 
@@ -176,7 +213,7 @@ module ConnectFour
       diag_left, diag_right = diagonals_from(col_i, row_i)
 
       [col_to_check, row_to_check, diag_left, diag_right].each do |line|
-        return true if nils_to_spaces(line).join.match(color * 4)
+        return true if nils_to_spaces(line).join.match(color * 4) 
       end
 
       if @turns == 42
@@ -193,7 +230,7 @@ module ConnectFour
     private
 
     def nils_to_spaces(arr)
-      arr.map { |x| x || " " }
+      arr.map { |x| convert(x) }
     end
 
   end # class Board
