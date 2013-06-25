@@ -100,10 +100,11 @@ end
 
 
 class Game
-  attr_reader :game_board, :name, :active_player, :inactive_player, :inplay, :interrupted
+  attr_reader :game_board, :game_type, :name, :active_player, :inactive_player, :inplay, :interrupted
 
   def initialize(game_type, player1, player2 = nil)
-    if game_type == "C" || game_type == "Connect Four"
+    @game_type = game_type
+    if @game_type == "C" || @game_type == "Connect Four"
       @game_board = ConnectFour::Board.new
       @name = "Connect Four"
     else
@@ -117,6 +118,7 @@ class Game
   end
 
   def add_player(player2)
+    player2.is_playing = true
     @active_player.is_playing = true
     if rand(2) == 0
       @inactive_player = player2
@@ -198,7 +200,6 @@ class Game
       @inactive_player.tell("#{inactive_player.name}, you win!")
       @active_player.tell("Sorry, #{active_player.name}, you lost.")
     end
-    stop_players
   end
 
 end
@@ -262,9 +263,24 @@ class Server
       current_game.reset_players
     else
       current_game.endgame
+      play_again(current_game)
     end
   end
 
+  def play_again(game)
+    response1 = game.active_player.ask("Do you want to play #{game.inactive_player.name} again? (Y/N)",["Y","N"]).upcase == "Y"
+    response2 = game.inactive_player.ask("Do you want to play #{game.active_player.name} again? (Y/N)",["Y","N"]).upcase == "Y"
+    if response1 && response2
+      game.tell_both("Great, you'll play again!")
+      new_game = Game.new(game.game_type,game.active_player,game.inactive_player)
+      game_in_play(new_game)
+    elsif response1
+      game.active_player.tell("Sorry, #{game.inactive_player.name} doesn't want to play with you anymore.")
+    elsif response2
+      game.inactive_player.tell("Sorry, #{game.active_player.name} doesn't want to play with you anymore.")
+    end
+    game.stop_players
+  end
 
   def select_game(new_player)
     new_player.tell("Your choices are: ")
