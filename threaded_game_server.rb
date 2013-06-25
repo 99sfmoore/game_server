@@ -29,6 +29,7 @@ class Player
 
   def ask(string, acceptable_responses = nil) #returns input from client in response to string
     if acceptable_responses # want to do this without if/else.  Is there a wildcard []
+      acceptable_responses.map!{|x| x.to_s}
       begin
         @conn.puts(string)
         @conn.puts("GET")
@@ -100,17 +101,13 @@ end
 
 
 class Game
-  attr_reader :game_board, :game_type, :name, :active_player, :inactive_player, :inplay, :interrupted
+  attr_reader :game_board, :game_info, :name, :active_player, :inactive_player, :inplay, :interrupted
 
-  def initialize(game_type, player1, player2 = nil)
-    @game_type = game_type
-    if @game_type == "C" || @game_type == "Connect Four"
-      @game_board = ConnectFour::Board.new
-      @name = "Connect Four"
-    else
-      @game_board = TicTacToe::Board.new
-      @name = "Tic Tac Toe"
-    end
+  def initialize(game_info, player1, player2 = nil)
+    @game_info = game_info
+    @game_board = Module.const_get(game_info[:module])::Board.new
+    @name = game_info[:name]
+    @mark_strings = game_info[:mark_descs]
     @active_player = player1
     @inplay = false
     @interrupted = false
@@ -130,12 +127,7 @@ class Game
   end
 
   def convert(mark)
-    if @name == "Connect Four"
-      mark == 1 ? result = "red" : result = "black"
-    else
-      mark == 1 ? result =  "X" : result = "O"
-    end
-    result
+    @mark_strings[mark]
   end
 
   def interrupted?
@@ -207,6 +199,15 @@ end
 
 class Server
 
+  @@available_games = [ { :name => "Connect Four",
+                          :module => "ConnectFour",
+                          :mark_descs => ["red","black"]
+                        },
+                        { :name => "Tic Tac Toe",
+                          :module => "TicTacToe",
+                          :mark_descs => ["X","O"]
+                        } ]
+
   def initialize(port = 21)
     @control_socket = TCPServer.new(port)
     puts "Server initialized on port #{port}"
@@ -215,9 +216,19 @@ class Server
     @game_lock = Mutex.new
   end
 
+  def list_games
+    response_string = ""
+    @@available_games.each_with_index do |game,i|
+      response_string << "\n#{i+1}) #{game[:name]}"
+    end
+    response_string
+  end
+
+
   def pick_game(new_player)
-    game_choice = new_player.ask("Would you like to play Connect Four (C) or TicTacToe (T)? (C/T)",["C","T"]).upcase
-    Game.new(game_choice, new_player)
+    game_choice = new_player.ask("Would you like to play?"+list_games,(1..@@available_games.size).to_a).to_i
+    game_info = @@available_games[game_choice-1]
+    Game.new(game_info, new_player)
   end
 
   def start_new_game(new_player)
@@ -272,7 +283,7 @@ class Server
     response2 = game.inactive_player.ask("Do you want to play #{game.active_player.name} again? (Y/N)",["Y","N"]).upcase == "Y"
     if response1 && response2
       game.tell_both("Great, you'll play again!")
-      new_game = Game.new(game.game_type,game.active_player,game.inactive_player)
+      new_game = Game.new(game.game_info,game.active_player,game.inactive_player)
       game_in_play(new_game)
     elsif response1
       game.active_player.tell("Sorry, #{game.inactive_player.name} doesn't want to play with you anymore.")
