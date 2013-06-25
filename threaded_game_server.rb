@@ -230,8 +230,15 @@ class Server
           wait_game = pick_game(new_player)
           start_single_player(new_player, wait_game)
         end
-        new_player.tell("Waiting....")
-        sleep(10)
+        new_player.tell("Still waiting for a second player to join....")
+        sleep(5)
+        begin
+          response = new_player.ask("Do you want to stop waiting? (Y/N)").upcase
+        end until response == "Y" || response == "N"
+        if response == "Y" 
+          @games.delete(new_game)
+          return
+        end
       end
     end
   end
@@ -306,13 +313,11 @@ class Server
               sleep(5) #what's the right time for this?  Better way to do?
             end
             begin
-              conn.puts("Do you want to play another game? (Y/N)")
-              conn.puts("GET")
-              response = conn.gets.chomp.upcase
+              response = new_player.ask("Do you want to play another game? (Y/N)")
             end until response == "Y" || response == "N"
           end until response == "N"
-          conn.puts("Goodbye")
-          conn.puts("END")
+          new_player.tell("Goodbye")
+          new_player.tell("END")
           conn.close
         end #thread
       end #socket loop
