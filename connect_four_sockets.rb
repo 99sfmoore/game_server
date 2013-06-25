@@ -20,6 +20,15 @@ module ConnectFour
       tempboard
     end
 
+    def valid_moves
+      moves = []
+      (1..7).each do |m|
+        moves << m if valid?(m)
+      end
+      moves
+    end
+
+
     def possible_moves(mark)
       possmoves = Hash.new { [] }
       (1..7).each do |m|
@@ -145,12 +154,14 @@ module ConnectFour
         end until valid?(pick)
 
       when 3 # computer thinks ahead -- this is not done
-        possmoves = possible_moves(mark)
-        begin
-          pick = possmoves[:win].first || possmoves[:block].first || rand(7)+1 #implement thinking ahead
-        end until valid?(pick)
+        possboards = []
+        valid_moves.each do |i|
+          tempboard = self.clone
+          tempboard.make_move(i,mark)
+          possboards[i] = getscore(tempboard,true,mark,4)
+        end
+        pick = possboards.index(mark*100) || possboards.index(0) || possboards.index(-mark*100)
       end
-
       pick
     end
 
