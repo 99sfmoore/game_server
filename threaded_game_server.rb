@@ -82,7 +82,10 @@ class ComputerPlayer
     #does nothing
   end
 
-  def ask(string)
+  def ask(string, acceptable_responses = nil)
+    if acceptable_responses
+      return acceptable_responses[rand(acceptable_responses.size)]
+    end
     #does nothing
   end
 
