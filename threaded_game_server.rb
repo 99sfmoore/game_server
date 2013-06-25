@@ -27,10 +27,19 @@ class Player
     @conn.puts(string)
   end
 
-  def ask(string) #returns input from client in response to string
-    @conn.puts(string)
-    @conn.puts("GET")
-    @conn.gets.chomp
+  def ask(string, acceptable_responses = nil) #returns input from client in response to string
+    if acceptable_responses # want to do this without if/else.  Is there a wildcard []
+      begin
+        @conn.puts(string)
+        @conn.puts("GET")
+        response = @conn.gets.chomp
+      end until acceptable_responses.any? {|x| x.casecmp(response) == 0}
+    else
+      @conn.puts(string)
+      @conn.puts("GET")
+      response = @conn.gets.chomp
+    end
+    response
   end
   
   def get_move(board)
@@ -206,35 +215,27 @@ class Server
   end
 
   def pick_game(new_player)
-    begin
-      game_choice = new_player.ask("Would you like to play Connect Four (C) or TicTacToe (T)? (C/T)").upcase
-    end until game_choice == "C" || game_choice == "T"
+    game_choice = new_player.ask("Would you like to play Connect Four (C) or TicTacToe (T)? (C/T)",["C","T"]).upcase
     Game.new(game_choice, new_player)
   end
 
   def start_new_game(new_player)
     new_game = pick_game(new_player)
-    begin
-      player_choice = new_player.ask("Do you want to play against the computer (C) or wait for someone to join (W)? (C/W)").upcase
-    end until player_choice == "C" || player_choice == "W"
+    player_choice = new_player.ask("Do you want to play against the computer (C) or wait for someone to join (W)? (C/W)",["C","W"]).upcase
     if player_choice == "C"
       start_single_player(new_player, new_game)
     else #wait for second player
       @games << new_game
       new_player.tell("Please wait for a second player to join")
       while new_game.inplay == false
-        begin
-          response = new_player.ask("Do you want to play against the computer while you're waiting? (Y/N)").upcase
-        end until response == "Y" || response == "N"
+        response = new_player.ask("Do you want to play against the computer while you're waiting? (Y/N)",["Y","N"]).upcase
         if response == "Y"
           wait_game = pick_game(new_player)
           start_single_player(new_player, wait_game)
         end
         new_player.tell("Still waiting for a second player to join....")
         sleep(5)
-        begin
-          response = new_player.ask("Do you want to stop waiting? (Y/N)").upcase
-        end until response == "Y" || response == "N"
+        response = new_player.ask("Do you want to stop waiting? (Y/N)",["Y","N"]).upcase
         if response == "Y" 
           @games.delete(new_game)
           return
@@ -244,12 +245,11 @@ class Server
   end
 
   def start_single_player(new_player, new_game)
-    begin
-      level = new_player.ask("Do you want an easy(1), medium(2), or hard(3) game?").to_i
-    end until (level >= 1 && level <= 3)
+    level = new_player.ask("Do you want an easy(1), medium(2), or hard(3) game?",["1","2","3"]).to_i
     new_game.add_player(ComputerPlayer.new(level))
     game_in_play(new_game)  
   end
+
   def game_in_play(current_game)
     current_game.tell_both(current_game.starting_state)
     current_game.tell_both(current_game.display)
@@ -261,7 +261,7 @@ class Server
     if current_game.interrupted?
       current_game.reset_players
     else
-      current_game.endgame 
+      current_game.endgame
     end
   end
 
@@ -312,9 +312,7 @@ class Server
             while new_player.is_playing
               sleep(5) #what's the right time for this?  Better way to do?
             end
-            begin
-              response = new_player.ask("Do you want to play another game? (Y/N)")
-            end until response == "Y" || response == "N"
+            response = new_player.ask("Do you want to play another game? (Y/N)",["Y","N"]).upcase
           end until response == "N"
           new_player.tell("Goodbye")
           new_player.tell("END")
