@@ -130,7 +130,7 @@ class Game
   end
 
   def convert(mark)
-    @mark_strings[mark]
+    mark == 1 ? @mark_strings[0] : @mark_strings[1]
   end
 
   def interrupted?
@@ -211,14 +211,24 @@ class Server
                           :mark_descs => ["X","O"]
                         } ]
 
+  def self.add_game(name,mod,mark_descs)
+    @@available_games << {:name => name,
+                          :module => mod,
+                          :mark_descs => mark_descs
+                        }
+  end
+
+
   def initialize(port = 21)
     @control_socket = TCPServer.new(port)
     puts "Server initialized on port #{port}"
+    p @@available_games
     @games = []
     @thread_list = []
     @game_lock = Mutex.new
   end
 
+  
   def list_games
     response_string = ""
     @@available_games.each_with_index do |game,i|
@@ -356,8 +366,8 @@ end #server class
 
 
 
-server = Server.new(4481)
-server.run
+# server = Server.new(4481)
+# server.run
 
 
 
