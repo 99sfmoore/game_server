@@ -8,21 +8,20 @@ port = 8001
 puts game.display
 
 
-#init_hash = JSON.parse(HTTParty.get("http://localhost:4567/play_request"))
 init_hash = JSON.parse(HTTParty.get("http://#{host}:#{port}/play_request").parsed_response)
-p init_hash
-if init_hash["board"] 
+if init_hash["board"].all? {|x| x ==0 } #player1
   player_id = init_hash["player1"]
   mark = 1
+ else
+  player_id = init_hash["player2"]
+  mark = -1
+end
+if init_hash["board"] 
   game.read_tictax(init_hash["board"])
   game.make_move(game.auto_move(3,mark),mark)
   puts game.display
   options = {:body => {:data => game.write_tictax.to_json}}
   HTTParty.post("http://#{host}:#{port}/submit_board/#{player_id}",options)
-  
-else
-  player_id = init_hash["player2"]
-  mark = -1
 end
 
 5.times do #currently no endgame on server
@@ -34,7 +33,6 @@ end
   end until response["status"] != "hold tight"
   game.read_tictax(response["board"])
   puts game.display
-  continue = gets.chomp
   game.make_move(game.auto_move(3,mark),mark)
   puts game.display
   options = {:body => {:data => game.write_tictax.to_json}}
