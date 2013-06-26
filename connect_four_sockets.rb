@@ -2,6 +2,25 @@ require 'colored'
 
 module ConnectFour 
 
+  class Score
+    attr_reader :score, :keep_playing, :possible_wins
+    include Comparable
+
+    def initialize(score,keep_playing,posswins)
+      @score = score
+      @possible_wins = posswins
+    end
+
+    def <=>(other)
+      if @score == other.score
+        return @possible_wins <=> other.possible_wins
+      else
+        return @score <=> other.score
+      end
+    end
+  end
+
+
   class Board
 
     attr_accessor :turns, :grid #for cloning purposes.  Better way to do this?
@@ -164,15 +183,23 @@ module ConnectFour
         end until valid?(pick)
 
       when 3 # computer thinks ahead -- this is not done
-        possboards = []
+        possboards = {}
         valid_moves.each do |i|
           tempboard = self.clone
           tempboard.make_move(i,mark)
-          possboards[i] = get_score(tempboard,true,mark,0,4)
+          possboards[i] = get_score(tempboard,true,mark,0,5)
           puts "score from move #{i} is #{possboards[i]}"
         end
+        p possboards
         puts "scores are #{possboards}"
-        pick = possboards.index(mark*100) || possboards.index(0) || possboards.index(-mark*100)
+        max_hash = possboards.select {|k,v| v == possboards.values.max}
+        p max_hash
+        min_hash = possboards.select {|k,v| v == possboards.values.min}
+        if mark == 1
+          pick = max_hash.keys[rand(max_hash.keys.size)]
+        else 
+          pick = min_hash.keys[rand(min_hash.keys.size)]
+        end
       end
       pick
     end
@@ -180,12 +207,12 @@ module ConnectFour
     def get_score(board,my_turn,mark,my_level,max_level)
       if board.game_over?
         if board.draw?
-          score = 0
+          score = Score.new(0,false,0)
         else
-          score = mark*100
+          score = Score.new(mark*100,false,mark)
         end
       elsif my_level == max_level
-        score = 0
+        score = Score.new(0,false,0)
       else
         nextboards = []
         valid_moves.each do |move|
@@ -198,7 +225,16 @@ module ConnectFour
         nextboards.map!{|bd| get_score(bd, !my_turn, -mark, my_level+1, max_level)}
         #puts "nextboard scores are #{nextboards}"
         #puts "mark is #{mark} (min if 1, max if -1)"
-        mark == 1 ? score = nextboards.min : score = nextboards.max
+        actual_score = 0
+        keep_playing = false
+        possible_wins = 0
+
+        nextboards.each do |subscore|
+          mark == 1 ? actual_score = [actual_score, subscore.score].min : actual_score = [actual_score, subscore.score].max
+          keep_playing = keep_playing || subscore.keep_playing
+          possible_wins += subscore.possible_wins
+        end
+        score = Score.new(actual_score,keep_playing,possible_wins)
       end
       score
     end
