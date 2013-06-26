@@ -1,7 +1,11 @@
 require 'httparty'
 require_relative 'faster_tic_tac_toe_sockets'
+require_relative 'connect_four_sockets'
 
-game = TicTacToe::Board.new
+
+puts "Are we playing TicTacToe (T) or Connect Four (C) ?"
+choice = gets.chomp.upcase
+choice == "T" ? game = TicTacToe::Board.new : game = ConnectFour::Board.new
 host = "thomasballinger.com"
 port = 8001
 
