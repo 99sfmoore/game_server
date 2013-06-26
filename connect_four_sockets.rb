@@ -1,4 +1,6 @@
 require 'colored'
+require 'json'
+require_relative 'jsonable'
 
 module ConnectFour 
 
@@ -19,7 +21,6 @@ module ConnectFour
       end
     end
   end
-
 
   class Board
 
@@ -163,6 +164,17 @@ module ConnectFour
       else
         " "
       end
+    end
+
+    def write_tictax
+      board_hash = {"board" => Jsonable.new(@grid).ready_for_json}
+    end
+
+    def read_tictax(board)
+      puts "board is #{board}"
+      new_board = Jsonable.new
+      new_board.from_json!(board)
+      @grid = new_board.two_d_array
     end
 
     def valid?(move)
