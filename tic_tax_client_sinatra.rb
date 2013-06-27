@@ -5,6 +5,8 @@ require_relative 'connect_four_sockets'
 
 puts "Are we playing TicTacToe (T) or Connect Four (C) ?"
 choice = gets.chomp.upcase
+puts "How smart should we be? (1) Dumb, (2) Average, (3) Genius"
+level = gets.chomp.to_i #could add a check here
 if choice == "T"
   game = TicTacToe::Board.new
   suffix = "/TTT"
@@ -19,24 +21,19 @@ port = 4567
 puts game.display
 
 
-init_hash = HTTParty.get("http://#{host}:#{port}/play_request#{suffix}").parsed_response #don't know why I'm not getting json
-p init_hash
+init_hash = HTTParty.get("http://#{host}:#{port}/play_request#{suffix}").parsed_response 
 if init_hash["board"] 
   player_id = init_hash["player_id"]
   mark = 1
-  puts "my mark is #{mark}"
   game.read_tictax(init_hash["board"])
-  puts "new grid is #{game.grid}"
-  game.make_move(game.auto_move(3,mark),mark)
+  game.make_move(game.auto_move(level,mark),mark)
   puts game.display
-  p game.write_tictax
   options = {:body => {:data => game.write_tictax.to_json}}
   HTTParty.post("http://#{host}:#{port}/submit_board/#{player_id}#{suffix}",options)
   
 else
   player_id = init_hash["player_id"]
   mark = -1
-  puts "my mark is #{mark}"
 end
 
 
@@ -44,8 +41,6 @@ begin
   begin 
     puts "requesting"
     response = HTTParty.get("http://#{host}:#{port}/get_board/#{player_id}#{suffix}").parsed_response
-    #response = JSON.parse(HTTParty.get("http://localhost:5000/get_board/#{player_id}")) ?? not getting JSON
-    p response
     sleep 3
   end until response["status"] == "your turn" || response["winner"]
   game.read_tictax(response["board"])
@@ -57,7 +52,7 @@ begin
   elsif response["winner"]
     puts "More debugging needed.  You lost."
   else
-    game.make_move(game.auto_move(3,mark),mark)
+    game.make_move(game.auto_move(level,mark),mark)
     puts game.display
     options = {:body => {:data => game.write_tictax.to_json}}
     HTTParty.post("http://#{host}:#{port}/submit_board/#{player_id}#{suffix}",options)
