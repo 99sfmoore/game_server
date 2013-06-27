@@ -1,4 +1,5 @@
 class Jsonable
+  #to turn 2D game_board into jsonable hash
 
   def initialize(two_D_array = [])
     two_D_array.each_with_index do |col, i|
