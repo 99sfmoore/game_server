@@ -1,5 +1,5 @@
 require_relative 'connect_four_sockets'
-require_relative 'tic_tac_toe_sockets'
+require_relative 'faster_tic_tac_toe_sockets'
 
 puts "Choose game (C/T)"
 choice = gets.chomp.upcase
@@ -23,11 +23,12 @@ begin
 	if current_player.last == 1
 		move = board.auto_move(level, current_player[1])
 	else
-	  move = gets.chomp.to_i
+		begin
+	    move = gets.chomp.to_i
+	  end until board.valid?(move)
 	end
 	board.make_move(move,current_player[1])
 	puts board.display
-	board.write_tictax
 	current_player == player1 ? current_player = player2 : current_player = player1
 end until board.game_over?
 if board.draw?
