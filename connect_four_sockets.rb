@@ -24,8 +24,7 @@ module ConnectFour
 
   class Board
 
-    attr_reader :last_move
-    attr_accessor :grid, :turns #for cloning purposes.  Better way to do this?  also used for tictax validation
+    attr_accessor :grid, :turns, :last_move#for cloning purposes.  Better way to do this?  also used for tictax validation
 
     def initialize
       @grid = Array.new(7){[]}
@@ -48,50 +47,6 @@ module ConnectFour
       end
       moves
     end
-
-
-    def possible_moves(mark)
-      possmoves = Hash.new { [] }
-      (1..7).each do |m|
-        tempboard = self.clone
-        tempboard.make_move(m,mark)
-
-        if tempboard.game_over?
-          possmoves[:win] = possmoves[:win] << m
-        else
-          tempboard = self.clone
-          tempboard.make_move(m,opp_mark(mark))
-          if tempboard.game_over?
-            possmoves[:block] = possmoves[:block] << m
-          end
-        end
-      end
-      possmoves
-    end
-
-    def think(mark)
-      (1..7).each do |m|
-        puts "looking at #{m}"
-        tempboard = self.clone
-        tempboard.make_move(m,mark)
-
-        if tempboard.game_over?
-          possmoves[:win] = possmoves[:win] << m
-        else
-          tempboard = self.clone
-          tempboard.make_move(m,opp_mark(mark))
-          if tempboard.game_over?
-            possmoves[:block] = possmoves[:block] << m
-          else
-            tempboard = self.clone
-            tempboard.make_move(m,mark)
-            possmoves = tempboard.think(opp_mark(mark))
-          end
-        end
-      end
-      possmoves
-    end
-
 
     def row(i)  #returns array of entire ith row
       @grid.map { |col| col[i]}
@@ -172,10 +127,8 @@ module ConnectFour
     end
 
     def read_tictax(board)
-      puts "board is #{board}"
       new_board = Jsonable.new
       new_board.from_json!(board)
-      puts "after from json board is #{new_board.two_d_array}"
       @grid = new_board.two_d_array
     end
 
@@ -186,34 +139,25 @@ module ConnectFour
     def auto_move(level,mark)
       case level
       when 1 #computer picks randomly
-        begin
-          pick = rand(7)+1
-        end until valid?(pick)
+        rec_level = 1
+      when 2 
+        rec_level = 3
+      when 3 
+        rec_level = 5
+      end
 
-      when 2 #computer will block or win, but not think ahead
-        possmoves = possible_moves(mark)
-        begin
-          pick = possmoves[:win].first || possmoves[:block].first || rand(7)+1
-        end until valid?(pick)
-
-      when 3 # computer thinks ahead -- this is not done
-        possboards = {}
-        valid_moves.each do |i|
-          tempboard = self.clone
-          tempboard.make_move(i,mark)
-          possboards[i] = get_score(tempboard,true,mark,0,5)
-          puts "score from move #{i} is #{possboards[i]}"
-        end
-        p possboards
-        puts "scores are #{possboards}"
-        max_hash = possboards.select {|k,v| v == possboards.values.max}
-        p max_hash
-        min_hash = possboards.select {|k,v| v == possboards.values.min}
-        if mark == 1
-          pick = max_hash.keys[rand(max_hash.keys.size)]
-        else 
-          pick = min_hash.keys[rand(min_hash.keys.size)]
-        end
+      possboards = {}
+      valid_moves.each do |i|
+        tempboard = self.clone
+        tempboard.make_move(i,mark)
+        possboards[i] = get_score(tempboard,true,mark,0,rec_level)
+      end
+      max_hash = possboards.select {|k,v| v == possboards.values.max}
+      min_hash = possboards.select {|k,v| v == possboards.values.min}
+      if mark == 1
+        pick = max_hash.keys[rand(max_hash.keys.size)]
+      else 
+        pick = min_hash.keys[rand(min_hash.keys.size)]
       end
       pick
     end
@@ -232,13 +176,9 @@ module ConnectFour
         valid_moves.each do |move|
           newboard = board.clone
           newboard.make_move(move,-mark)
-          #puts "level is #{my_level}, move is #{move}"
-          #puts newboard.display
           nextboards << newboard
         end
         nextboards.map!{|bd| get_score(bd, !my_turn, -mark, my_level+1, max_level)}
-        #puts "nextboard scores are #{nextboards}"
-        #puts "mark is #{mark} (min if 1, max if -1)"
         actual_score = 0
         keep_playing = false
         possible_wins = 0
