@@ -1,9 +1,7 @@
 require 'socket'
 require 'thread'
-require_relative 'connect_four_sockets'
-require_relative 'faster_tic_tac_toe_sockets'
 
-# Server to allow multiple games of Connect Four and TicTacToe
+# Server to allow multiple instances of 2 player games
 # run 'game_client.rb' to connect
 
 
@@ -70,7 +68,14 @@ class ComputerPlayer
 
   def initialize(level)
     @level = level
-    @name = "HAL"
+    case @level
+    when 1
+      @name = "Goldfish"
+    when 2
+      @name = "Average Joe"
+    when 3
+      @name = "Einstein" 
+    end
     @mark = -1
     @interrupted = false
   end
@@ -137,11 +142,6 @@ class Game
     @active_player.interrupted || @inactive_player.interrupted
   end
 
-  def wait
-    begin
-    end until @inplay
-  end
-
   def starting_state
     "#{@active_player.name} will be #{convert(@active_player.mark)} and #{@inactive_player.name} will be #{convert(@inactive_player.mark)}.\n
      #{@active_player.name} will go first"
@@ -202,14 +202,7 @@ end
 
 class Server
 
-  @@available_games = [ { :name => "Connect Four",
-                          :module => "ConnectFour",
-                          :mark_descs => ["red","black"]
-                        },
-                        { :name => "Tic Tac Toe",
-                          :module => "TicTacToe",
-                          :mark_descs => ["X","O"]
-                        } ]
+  @@available_games = [ ]
 
   def self.add_game(name,mod,mark_descs)
     @@available_games << {:name => name,
@@ -219,13 +212,12 @@ class Server
   end
 
 
-  def initialize(port = 21)
+  def initialize(port = 5656)
     @control_socket = TCPServer.new(port)
     puts "Server initialized on port #{port}"
-    p @@available_games
     @games = []
     @thread_list = []
-    @game_lock = Mutex.new
+    @game_lock = Mutex.new #not currently using this
   end
 
   
@@ -317,7 +309,7 @@ class Server
     if game_choice > choices.size
       start_new_game(new_player)
     else
-      #@game_lock.synchronize do# need to somehow lock the choices, currently 2 people can join the same game -- kicks original player out
+      #@game_lock.synchronize do# need to somehow lock the choices, currently 2 people could simultaneously join the same game
         current_game = choices[game_choice-1]
         if current_game.inplay
           new_player.tell("Sorry, that game was just taken.")
@@ -350,7 +342,7 @@ class Server
               select_game(new_player)
             end
             while new_player.is_playing
-              sleep(5) #what's the right time for this?  Better way to do?
+              sleep(5) #what's the right time for this?  Better way to do this instead of the loop?
             end
             response = new_player.ask("Do you want to play another game? (Y/N)",["Y","N"]).upcase
           end until response == "N"
@@ -364,10 +356,6 @@ class Server
   end #run          
 end #server class
 
-
-
-# server = Server.new(4481)
-# server.run
 
 
 
