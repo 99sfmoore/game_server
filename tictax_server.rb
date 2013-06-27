@@ -11,7 +11,7 @@ class GameState
   def initialize(game_type)
     @game_type = game_type
     if game_type == "C4"
-      @board = ConnectFour::Board.new  #  Jsonable.new(Array.new(7){[]}).ready_for_json
+      @board = ConnectFour::Board.new 
     elsif game_type == "TTT" #ttt  X is player 1, O is player 2
       @board = Array.new(9){0}
     end
@@ -146,12 +146,10 @@ end
 
 
 post '/submit_board/:player_id/:game_type' do 
-  puts "I'm here"
   the_game = $games.find {|g| g.turn == params[:player_id].to_s.to_i}
   if the_game
     game_hash = JSON.parse(params[:data])
     the_game.validate(game_hash["board"])
     the_game.check_game_over
   end
-  puts "all good"
 end
