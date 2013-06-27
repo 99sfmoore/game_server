@@ -16,7 +16,7 @@ module ConnectFour
     def <=>(other)
       if @score == other.score
         return @possible_wins <=> other.possible_wins
-      else
+      else 
         return @score <=> other.score
       end
     end
@@ -24,7 +24,8 @@ module ConnectFour
 
   class Board
 
-    attr_accessor :turns, :grid #for cloning purposes.  Better way to do this?
+    attr_reader :last_move
+    attr_accessor :grid, :turns #for cloning purposes.  Better way to do this?  also used for tictax validation
 
     def initialize
       @grid = Array.new(7){[]}
@@ -174,6 +175,7 @@ module ConnectFour
       puts "board is #{board}"
       new_board = Jsonable.new
       new_board.from_json!(board)
+      puts "after from json board is #{new_board.two_d_array}"
       @grid = new_board.two_d_array
     end
 

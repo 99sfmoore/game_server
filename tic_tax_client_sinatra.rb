@@ -1,7 +1,7 @@
 require 'httparty'
 require_relative 'faster_tic_tac_toe_sockets'
 require_relative 'connect_four_sockets'
-require_relative 'jsonobject'
+
 
 puts "Are we playing TicTacToe (T) or Connect Four (C) ?"
 choice = gets.chomp.upcase
@@ -13,7 +13,7 @@ else
   suffix = "/C4"
 end
 host = "localhost" #"thomasballinger.com"
-port = 4567
+port = 4567  
 
 
 puts game.display
@@ -26,6 +26,7 @@ if init_hash["board"]
   mark = 1
   puts "my mark is #{mark}"
   game.read_tictax(init_hash["board"])
+  puts "new grid is #{game.grid}"
   game.make_move(game.auto_move(3,mark),mark)
   puts game.display
   p game.write_tictax
