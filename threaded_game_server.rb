@@ -49,11 +49,12 @@ class Player
     move
   end
 
-  def interrupt
+  def interrupt(name)
     if @is_playing
       tell("This game is cancelled")
       @interrupted = true
     end
+    tell("#{name} will be joining you.")
   end
 
   def reset
@@ -119,7 +120,7 @@ class Game
     @active_player = player1
     @inplay = false
     @interrupted = false
-    add_player(player2) and @inplay = true if player2
+    add_player(player2) if player2
   end
 
   def add_player(player2)
@@ -231,7 +232,7 @@ class Server
 
 
   def pick_game(new_player)
-    game_choice = new_player.ask("Would you like to play?"+list_games,(1..@@available_games.size).to_a).to_i
+    game_choice = new_player.ask("Which game would you like to play?"+list_games,(1..@@available_games.size).to_a).to_i
     game_info = @@available_games[game_choice-1]
     Game.new(game_info, new_player)
   end
@@ -244,18 +245,21 @@ class Server
     else #wait for second player
       @games << new_game
       new_player.tell("Please wait for a second player to join")
-      while new_game.inplay == false
+      until new_game.inplay 
         response = new_player.ask("Do you want to play against the computer while you're waiting? (Y/N)",["Y","N"]).upcase
         if response == "Y"
           wait_game = pick_game(new_player)
           start_single_player(new_player, wait_game)
+        else
+          new_player.tell("Still waiting for a second player to join....") unless new_game.inplay
+          sleep(10) unless new_game.inplay
         end
-        new_player.tell("Still waiting for a second player to join....")
-        sleep(5)
-        response = new_player.ask("Do you want to stop waiting? (Y/N)",["Y","N"]).upcase
-        if response == "Y" 
-          @games.delete(new_game)
-          return
+        unless new_game.inplay
+          response = new_player.ask("Do you want to stop waiting? (Y/N)",["Y","N"]).upcase 
+          if response == "Y" 
+            @games.delete(new_game)
+            return
+          end
         end
       end
     end
@@ -284,8 +288,11 @@ class Server
   end
 
   def play_again(game)
-    response1 = game.active_player.ask("Do you want to play #{game.inactive_player.name} again? (Y/N)",["Y","N"]).upcase == "Y"
-    response2 = game.inactive_player.ask("Do you want to play #{game.active_player.name} again? (Y/N)",["Y","N"]).upcase == "Y"
+    #this a little off because both players are being asked on the same thread.
+    game.active_player.tell("Do you want to play #{game.inactive_player.name} again? (Y/N)")
+    game.inactive_player.tell("Do you want to play #{game.active_player.name} again? (Y/N)")
+    response1 = game.active_player.ask("",["Y","N"]).upcase == "Y"
+    response2 = game.inactive_player.ask("",["Y","N"]).upcase == "Y"
     if response1 && response2
       game.tell_both("Great, you'll play again!")
       new_game = Game.new(game.game_info,game.active_player,game.inactive_player)
@@ -315,14 +322,12 @@ class Server
           new_player.tell("Sorry, that game was just taken.")
           select_game(new_player)
         else
-        new_player.tell("Waiting to connect....")
-        new_player.is_player2
-        current_game.active_player.interrupt
-        current_game.active_player.tell("#{new_player.name} will be joining you.")
-        current_game.add_player(new_player)
+          current_game.active_player.interrupt(new_player.name) 
+          new_player.is_player2
+          current_game.add_player(new_player)
+          game_in_play(current_game) 
         end
       #end # end synchronize / Mutex doesn't work (? because it never gets to end of if/else & unlocks ?)
-      game_in_play(current_game)
     end
   end
 
