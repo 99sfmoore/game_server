@@ -1,7 +1,5 @@
-require_relative 'threaded_game_server'
-
 module FakeGame
-
+ #template for requirements of a 2-player game to work with server
   class Board
 
     def initialize
@@ -18,7 +16,7 @@ module FakeGame
       @board[move-1].is_a?(Integer)
     end
 
-    def display
+    def display #string representation of current game state
       @board.map {|x| " #{x} "}.join
     end
 
@@ -39,6 +37,3 @@ module FakeGame
 end
 
 
-Server.add_game("Fake Game","FakeGame",["L","R"])
-s = Server.new(4481)
-s.run
