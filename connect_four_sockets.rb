@@ -138,7 +138,7 @@ module ConnectFour
 
     def auto_move(level,mark)
       case level
-      when 1 #computer picks randomly
+      when 1 
         rec_level = 1
       when 2 
         rec_level = 3
