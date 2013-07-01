@@ -12,6 +12,10 @@ module FakeGame
       @turns +=1
     end
 
+    def automove(level,mark)
+      make_move(rand(10)+1,mark)
+    end
+
     def valid?(move)
       @board[move-1].is_a?(Integer)
     end
