@@ -5,6 +5,7 @@ require_relative 'faster_tic_tac_toe_sockets'
 host = "thomasballinger.com"
 port = 8001
 
+game = TicTacToe::Board.new
 puts game.display
 
 
@@ -29,7 +30,7 @@ end
     puts "requesting"
     response = JSON.parse(HTTParty.get("http://#{host}:#{port}/get_board/#{player_id}").parsed_response)
     p response
-    sleep 5
+    sleep 3
   end until response["status"] != "hold tight"
   game.read_tictax(response["board"])
   puts game.display
