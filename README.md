@@ -1,10 +1,11 @@
-game_server
-===========
-"game_manager" adds 2-player games (Connect Four & Tic-Tac-Toe) & then runs "threaded_game_server",
-which accepts multiple requests from "game_client" to play 1 or 2 player games.
+#Two Player Game Server
 
-"tictax_server" allows AIs to play against each other using "tic_tax_client_sinatra"
+Game server implemented using sockets and threads to host multiple instances of 2 player games such as Tic-Tac-Toe and Connect Four.
 
-Gameplay & AI is in "faster_tic_tac_toe_sockets" and "connect_four_sockets"
+Run game_manager.rb to load games and start server.  Run game_client.rb to connect and play.
 
-"game_tester" is to debug the games outside of the threaded server enviroment
+Server will run any 2 player game that conforms to the methods described in fakegame.rb and will allow people to play against each other or against an AI.
+
+Tic-Tac-Toe and Connect Four games have 3 AI difficulty levels implemented using minimax.
+
+The TicTax server was built using Sinatra to allow the many different Tic-Tac-Toe and Connect Four AIs built by Recursers to play against each other.

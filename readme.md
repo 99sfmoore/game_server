@@ -1,12 +1,11 @@
-#2 Player Game Server
+#Two Player Game Server
 
-A server implemented with sockets and threads that can host multiple instances of 2 player games such as Tic-Tac-Toe and Connect 4.  
+Game server implemented using sockets and threads to host multiple instances of 2 player games such as Tic-Tac-Toe and Connect Four.
 
-Run game_manager.rb to load games and start server.  Run game_client.rb to connect.
+Run game_manager.rb to load games and start server.  Run game_client.rb to connect and play.
 
-Tic-Tac-Toe and Connect 4 programs include AI's with 3 different difficulty levels, using minimax.
+Server will run any 2 player game that conforms to the methods described in fakegame.rb and will allow people to play against each other or against an AI.
 
-The server will run any 2 player game that implements the methods in fake_game.rb.
+Tic-Tac-Toe and Connect Four games have 3 AI difficulty levels implemented using minimax.
 
-The Tic Tax server was built to allow different RCers to play our Tic-Tac-Toe and Connect 4 AI's against each other.  
-
+The TicTax server was built using Sinatra to allow the many different Tic-Tac-Toe and Connect Four AIs built by Recursers to play against each other.
